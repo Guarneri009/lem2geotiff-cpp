@@ -221,7 +221,7 @@ if(CUDA_AVAILABLE)
 
     # CUDAアーキテクチャ設定
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        CUDA_ARCHITECTURES "60;70;75;80;86;89;100"  # Maxwell〜Blackwell対応
+        CUDA_ARCHITECTURES "60;70;75;80;86;89" # Maxwell〜Blackwellはコンパイルできないので除外 100 
         CUDA_RESOLVE_DEVICE_SYMBOLS ON
     )
 

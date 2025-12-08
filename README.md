@@ -60,7 +60,7 @@ make -j$(nproc)
 特定のGPUモデル向け：
 
 ```bash
-# RTX 50xxシリーズ用（Blackwell - compute capability 10.0）
+# RTX 50xxシリーズ用（Blackwell - compute capability 10.0）現状はローカルコンパイル版のみ
 cmake .. -DCMAKE_CUDA_ARCHITECTURES=100
 
 # RTX 40xxシリーズ用（Ada Lovelace - compute capability 8.9）
