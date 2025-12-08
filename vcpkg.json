@@ -1,0 +1,12 @@
+{
+  "name": "lem2geotiff-cpp",
+  "version": "1.0.0",
+  "description": "LEM to GeoTIFF converter",
+  "dependencies": [
+    {
+      "name": "gdal",
+      "default-features": false
+    },
+    "tbb"
+  ]
+}
