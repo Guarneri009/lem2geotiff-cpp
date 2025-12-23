@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for_each.h>
 
@@ -199,6 +203,11 @@ void process_directory_tree(const fs::path& parent_dir, float nodata_value, int 
 }
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    // Windowsコンソール出力をUTF-8に設定
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     cxxopts::Options options("lem2geotiff_cpp", "LEMファイルをGeoTIFFに変換");
 
     options.add_options()("d,directory", "LEMファイルを含む入力ディレクトリ",

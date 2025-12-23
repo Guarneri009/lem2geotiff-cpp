@@ -163,6 +163,7 @@ if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4
         /permissive-
+        /utf-8
         $<$<CONFIG:Debug>:/Od /Zi>
         $<$<CONFIG:Release>:/O2 /DNDEBUG>
     )
