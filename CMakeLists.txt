@@ -159,6 +159,9 @@ if(MSVC)
         message(STATUS "Using static runtime library for triplet: ${VCPKG_TARGET_TRIPLET}")
     endif()
 
+    # Windows.hのmin/maxマクロを無効化（TBBとの競合を回避）
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
+
     # MSVC用コンパイルオプション
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4
