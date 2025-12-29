@@ -1,0 +1,151 @@
+name: Linux Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux:
+    name: build (linux-x64)
+    runs-on: ubuntu-22.04
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-linux
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Create vcpkg cache directory
+        run: mkdir -p ${{ github.workspace }}/vcpkg-cache
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            pkg-config \
+            autoconf \
+            autoconf-archive \
+            automake \
+            libtool \
+            curl \
+            zip \
+            unzip \
+            tar
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg-cache
+            vcpkg_installed
+          key: vcpkg-linux-x64-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-linux-x64-
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: "1ee2e9d2920ba96be0b02c09915dd3c6d17fb50e"
+          runVcpkgInstall: true
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DENABLE_CUDA=OFF
+
+      - name: Build
+        run: |
+          cmake --build build --config Release
+
+      - name: Check executable
+        run: |
+          echo "=== File info ==="
+          ls -lh build/lem2geotiff_cpp
+          echo ""
+          echo "=== Dependencies (ldd) ==="
+          ldd build/lem2geotiff_cpp || true
+          echo ""
+          echo "=== File type ==="
+          file build/lem2geotiff_cpp
+
+      - name: Test executable
+        run: |
+          echo "=== Testing executable ==="
+          ./build/lem2geotiff_cpp --help
+          echo "Executable runs successfully!"
+
+      - name: Prepare artifacts
+        run: |
+          echo "=== Preparing artifacts ==="
+
+          mkdir -p artifacts
+
+          # Copy executable
+          cp build/lem2geotiff_cpp artifacts/
+
+          # Copy PROJ data files from vcpkg_installed
+          VCPKG_INSTALLED="vcpkg_installed/x64-linux"
+
+          if [ -d "$VCPKG_INSTALLED/share/proj" ]; then
+            cp -r "$VCPKG_INSTALLED/share/proj" artifacts/proj-data
+            echo "Copied PROJ data files"
+          fi
+
+          # Copy documentation
+          [ -f README.md ] && cp README.md artifacts/
+          [ -f LICENSE ] && cp LICENSE artifacts/
+
+          echo ""
+          echo "=== Final artifacts summary ==="
+          echo "Executable:"
+          ls -lh artifacts/lem2geotiff_cpp
+          echo ""
+          echo "Total size:"
+          du -sh artifacts/
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-x64-linux
+          path: |
+            build/**/*.log
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lem2geotiff-cpp-linux-x64
+          path: artifacts/
+          retention-days: 30
+
+      - name: Create Release Archive
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd artifacts
+          tar -czvf ../lem2geotiff-cpp-linux-x64.tar.gz *
+
+      - name: Upload Release Asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: lem2geotiff-cpp-linux-x64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,11 @@
+{
+  "name": "lem2geotiff-cpp",
+  "version": "1.0.0",
+  "description": "LEM to GeoTIFF converter",
+  "dependencies": [
+    "tiff",
+    "libgeotiff",
+    "proj",
+    "tbb"
+  ]
+}

@@ -1,0 +1,6 @@
+.*/
+.*
+!.github/
+!.gitignore
+build/
+build-*/

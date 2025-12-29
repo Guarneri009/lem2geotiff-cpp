@@ -1,0 +1,134 @@
+name: Windows Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-msvc:
+    name: build (windows-x64-msvc)
+    runs-on: windows-2022
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Create vcpkg cache directory
+        run: New-Item -ItemType Directory -Force -Path ${{ github.workspace }}\vcpkg-cache
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}\vcpkg-cache
+            vcpkg_installed
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-windows-x64-static-
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: "1ee2e9d2920ba96be0b02c09915dd3c6d17fb50e"
+          runVcpkgInstall: true
+
+      - name: Configure CMake
+        run: |
+          cmake -B build `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DENABLE_CUDA=OFF
+
+      - name: Build
+        run: |
+          cmake --build build --config Release
+
+      - name: Check executable
+        run: |
+          Write-Host "=== File info ==="
+          Get-ChildItem build\lem2geotiff_cpp.exe | Format-Table Name, Length
+          Write-Host ""
+          Write-Host "=== Dependencies (dumpbin) ==="
+          dumpbin /dependents build\lem2geotiff_cpp.exe
+
+      - name: Test executable
+        run: |
+          Write-Host "=== Testing executable ==="
+          .\build\lem2geotiff_cpp.exe --help
+          Write-Host "Executable runs successfully!"
+
+      - name: Prepare artifacts
+        run: |
+          Write-Host "=== Preparing artifacts ==="
+
+          New-Item -ItemType Directory -Force -Path artifacts
+
+          # Copy executable
+          Copy-Item build\lem2geotiff_cpp.exe artifacts\
+
+          # Copy PROJ data files from vcpkg_installed
+          $vcpkgInstalled = "vcpkg_installed\x64-windows-static"
+
+          $projData = "$vcpkgInstalled\share\proj"
+          if (Test-Path $projData) {
+            Copy-Item -Recurse $projData artifacts\proj-data
+            Write-Host "Copied PROJ data files"
+          }
+
+          # Copy documentation
+          if (Test-Path README.md) { Copy-Item README.md artifacts\ }
+          if (Test-Path LICENSE) { Copy-Item LICENSE artifacts\ }
+
+          Write-Host ""
+          Write-Host "=== Final artifacts summary ==="
+          Write-Host "EXE files:"
+          Get-ChildItem artifacts\*.exe | Format-Table Name, Length
+          Write-Host "Total size: $([math]::Round((Get-ChildItem artifacts -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 2)) MB"
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-x64-windows
+          path: |
+            build/**/*.log
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lem2geotiff-cpp-windows-x64
+          path: artifacts/
+          retention-days: 30
+
+      - name: Create Release Archive
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          Compress-Archive -Path artifacts\* -DestinationPath lem2geotiff-cpp-windows-x64.zip
+
+      - name: Upload Release Asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: lem2geotiff-cpp-windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
