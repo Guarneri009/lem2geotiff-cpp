@@ -118,13 +118,7 @@ jobs:
           # Copy executable
           cp build/lem2geotiff_cpp artifacts/
 
-          # Copy GDAL data files from vcpkg_installed
           VCPKG_INSTALLED="vcpkg_installed/x64-linux"
-
-          if [ -d "$VCPKG_INSTALLED/share/gdal" ]; then
-            cp -r "$VCPKG_INSTALLED/share/gdal" artifacts/gdal-data
-            echo "Copied GDAL data files"
-          fi
 
           # Copy PROJ data files from vcpkg_installed
           if [ -d "$VCPKG_INSTALLED/share/proj" ]; then

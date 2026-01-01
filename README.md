@@ -35,7 +35,6 @@ LEM形式からGeoTIFF形式への変換ツール（C++実装、CUDA対応）
 ### 必須
 - C++20対応コンパイラ（GCC 11以上またはClang 14以上）
 - CMake 3.18以上
-- GDAL 3.0以上
 - Intel TBB
 
 ### オプション

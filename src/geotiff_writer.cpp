@@ -17,7 +17,7 @@
 
 namespace lem_converter {
 
-// GDAL NODATA タグ (42113) を libtiff に登録
+// GDAL互換 NODATA タグ (42113) を libtiff に登録（GDALライブラリは使用せず、タグ仕様のみ使用）
 #define TIFFTAG_GDAL_NODATA 42113
 
 static const TIFFFieldInfo gdal_field_info[] = {
